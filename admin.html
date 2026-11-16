@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>지도 조각 관리실</title>
+<style>
+  :root {
+    --bg: #f4efe4; --card: #fffdf8; --ink: #2a221b; --muted: #7a6e60; --line: #e2d8c6;
+    --accent: #bf4436; --teal: #2f7d74; --gold: #d9a72c; --soft: #f7f1e5;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif; }
+  header { background: #2a221b; color: #f4efe4; padding: 14px 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  header h1 { font-size: 18px; margin: 0; flex: 1; }
+  header .sub { color: #c9bda9; font-size: 13px; }
+  main { max-width: 1100px; margin: 0 auto; padding: 18px 16px 60px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; margin-bottom: 16px; }
+  .card h2 { font-size: 16px; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .tile { background: var(--soft); border-radius: 10px; padding: 10px 12px; }
+  .tile b { display: block; font-size: 24px; font-variant-numeric: tabular-nums; }
+  .tile span { color: var(--muted); font-size: 13px; }
+  .tile.live b { color: var(--teal); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 13px; background: var(--soft); position: sticky; top: 0; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  .scroll { max-height: 460px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
+  .bar { height: 10px; border-radius: 5px; background: var(--teal); display: inline-block; vertical-align: middle; min-width: 2px; }
+  .bar.b2 { background: var(--gold); }
+  .bar.b3 { background: var(--accent); }
+  .legend { display: flex; gap: 14px; color: var(--muted); font-size: 13px; margin-bottom: 8px; flex-wrap: wrap; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
+  button { font: inherit; border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 5px 10px; cursor: pointer; color: var(--ink); }
+  button:hover { border-color: var(--muted); }
+  button.danger { color: var(--accent); }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); padding: 8px 18px; }
+  input[type=password], input[type=search] { font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); }
+  .login { max-width: 360px; margin: 80px auto; text-align: center; }
+  .login input { width: 100%; margin: 12px 0; }
+  .msg { color: var(--accent); min-height: 22px; font-size: 14px; }
+  .fb { border-bottom: 1px solid var(--line); padding: 10px 2px; display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; }
+  .fb.done { opacity: .5; }
+  .fb .meta { color: var(--muted); font-size: 12.5px; }
+  .fb .text { white-space: pre-wrap; word-break: break-word; }
+  .tag { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 99px; background: var(--soft); border: 1px solid var(--line); margin-right: 6px; }
+  .tag.t { background: #e7f2ef; border-color: #b9d8d1; color: var(--teal); }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .grow { flex: 1; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+  .tabs button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  @media (max-width: 640px) { .hide-sm { display: none; } .tile b { font-size: 20px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>지도 조각 대모험 · 관리실</h1>
+  <span class="sub" id="who"></span>
+  <button id="reload" hidden>새로고침</button>
+  <button id="logout" hidden>나가기</button>
+</header>
+<main id="app">
+  <div class="card login" id="login">
+    <h2 style="justify-content:center">선생님 관리실</h2>
+    <p class="muted">깃허브 금고에 넣은 관리실 비밀번호(ADMIN_KEY)를 입력하세요.</p>
+    <form id="lf"><input type="password" id="pw" placeholder="관리실 비밀번호" autocomplete="current-password"><button class="primary" type="submit">들어가기</button></form>
+    <div class="msg" id="lmsg"></div>
+  </div>
+  <div id="dash" hidden>
+    <div class="card"><h2>지금 · 누적</h2><div class="tiles" id="tiles"></div></div>
+    <div class="card">
+      <h2>최근 30일</h2>
+      <div class="legend"><span><i style="background:var(--teal)"></i>게임 연 기기 수 (≈ 학생 수)</span><span><i style="background:var(--gold)"></i>새로 시작</span><span><i style="background:var(--accent)"></i>완주(엔딩)</span></div>
+      <div class="scroll"><table id="days"></table></div>
+      <p class="muted">기기 수는 같은 기기·브라우저를 하루에 한 번만 셉니다. 기록 정리 전(관리실 생기기 전) 날짜는 0으로 나올 수 있어요.</p>
+    </div>
+    <div class="card">
+      <h2>건의함 <span class="muted" id="fbcount"></span></h2>
+      <div class="tabs"><button data-f="open" class="on">확인 안 한 것</button><button data-f="all">모두</button></div>
+      <div id="fblist"></div>
+    </div>
+    <div class="card"><h2>별점</h2><table id="stars"></table></div>
+    <div class="card"><h2>시도별 랭킹 인원</h2><div class="scroll"><table id="regions"></table></div></div>
+    <div class="card">
+      <h2>랭킹 기록</h2>
+      <div class="row" style="margin-bottom:10px"><input type="search" id="q" class="grow" placeholder="별명·시도로 찾기"><span class="muted" id="scount"></span></div>
+      <div class="scroll"><table id="scores"></table></div>
+      <p class="muted">이상한 별명은 「지우기」로 지울 수 있어요. 지운 기록은 되살릴 수 없습니다.</p>
+    </div>
+  </div>
+</main>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const num = n => (Number(n) || 0).toLocaleString('ko-KR');
+  let URL0 = '', KEY = '', scores = [], fbRows = [], fbFilter = 'open';
+  const store = { get() { try { return sessionStorage.getItem('jido_admin') || ''; } catch (e) { return ''; } }, set(v) { try { v ? sessionStorage.setItem('jido_admin', v) : sessionStorage.removeItem('jido_admin'); } catch (e) {} } };
+
+  async function base() {
+    if (URL0) return URL0;
+    const q = new URLSearchParams(location.search).get('rank');
+    if (q && /^https?:\/\//.test(q)) return (URL0 = q.replace(/\/+$/, ''));
+    const r = await fetch('rank-url.txt', { cache: 'no-store' });
+    URL0 = (await r.text()).trim().replace(/\/+$/, '');
+    return URL0;
+  }
+  async function api(path, body) {
+    const u = await base();
+    const r = await fetch(u + path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Admin-Key': KEY }, body: JSON.stringify(body) } : { headers: { 'X-Admin-Key': KEY } });
+    const j = await r.json().catch(() => ({ ok: false, why: '응답을 읽지 못했어요' }));
+    if (!j.ok) throw new Error(j.why || ('오류 ' + r.status));
+    return j;
+  }
+
+  async function login(pw) {
+    KEY = pw; $('lmsg').textContent = '확인하는 중…';
+    try { await load(); store.set(pw); $('login').hidden = true; $('dash').hidden = false; $('reload').hidden = $('logout').hidden = false; $('lmsg').textContent = ''; }
+    catch (e) { $('lmsg').textContent = e.message; store.set(''); }
+  }
+
+  async function load() {
+    const [s, sc, fb] = await Promise.all([api('/admin/summary'), api('/admin/scores'), api('/admin/feedback')]);
+    $('who').textContent = '오늘 ' + s.today + ' 기준';
+    const ratingN = s.ratings.reduce((t, r) => t + r.n, 0), ratingAvg = ratingN ? (s.ratings.reduce((t, r) => t + r.n * r.stars, 0) / ratingN).toFixed(1) : '-';
+    const tiles = [
+      ['live', '지금 탐험 중', s.live + '명'],
+      ['', '오늘 게임 연 기기', num(s.devices.today)],
+      ['', '지금까지 게임 연 기기', num(s.devices.total)],
+      ['', '누적 게임 열기', num(s.totals.opens)],
+      ['', '누적 새로 시작', num(s.totals.starts)],
+      ['', '누적 완주', num(s.totals.endings)],
+      ['', '랭킹 등록', num(s.scores.n) + '명'],
+      ['', '랭킹 평균 점수', s.scores.avg != null ? num(s.scores.avg) + '점' : '-'],
+      ['', '완주까지 평균', s.scores.play != null ? Math.floor(s.scores.play / 60) + '시간 ' + (s.scores.play % 60) + '분' : '-'],
+      ['', '평균 별점', ratingAvg + (ratingN ? ' (' + ratingN + '명)' : '')],
+      ['', '확인 안 한 건의', num(s.feedback.open || 0) + '개']
+    ];
+    $('tiles').innerHTML = tiles.map(([c, k, v]) => `<div class="tile ${c}"><b>${esc(v)}</b><span>${esc(k)}</span></div>`).join('');
+
+    // 최근 30일 (빈 날도 채움)
+    const map = Object.fromEntries(s.days.map(d => [d.day, d]));
+    const rows = [];
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(Date.parse(s.today) - i * 86400e3).toISOString().slice(0, 10);
+      rows.push(map[d] || { day: d, opens: 0, starts: 0, endings: 0, devices: 0 });
+    }
+    const mx = Math.max(1, ...rows.map(r => Math.max(r.devices, r.starts, r.endings)));
+    const W = v => Math.round(220 * v / mx);
+    $('days').innerHTML = '<tr><th>날짜</th><th class="n">기기</th><th class="n">새로 시작</th><th class="n">완주</th><th class="n hide-sm">게임 열기</th><th class="hide-sm"></th></tr>' +
+      rows.map(r => `<tr><td>${r.day.slice(5).replace('-', '/')} (${'일월화수목금토'[new Date(r.day).getDay()]})</td><td class="n">${r.devices}</td><td class="n">${r.starts}</td><td class="n">${r.endings}</td><td class="n hide-sm">${r.opens}</td>
+        <td class="hide-sm"><span class="bar" style="width:${W(r.devices)}px"></span><br><span class="bar b2" style="width:${W(r.starts)}px"></span><br><span class="bar b3" style="width:${W(r.endings)}px"></span></td></tr>`).join('');
+
+    // 별점
+    const sm = Object.fromEntries(s.ratings.map(r => [r.stars, r.n])), smx = Math.max(1, ...Object.values(sm));
+    $('stars').innerHTML = [5, 4, 3, 2, 1].map(k => `<tr><td style="width:90px">${'★'.repeat(k)}</td><td class="n" style="width:60px">${sm[k] || 0}명</td><td><span class="bar b2" style="width:${Math.round(260 * (sm[k] || 0) / smx)}px"></span></td></tr>`).join('');
+
+    // 시도별
+    $('regions').innerHTML = '<tr><th>시도</th><th class="n">인원</th><th class="n">평균 점수</th><th class="n">최고 점수</th></tr>' +
+      (s.regions.length ? s.regions.map(r => `<tr><td>${esc(r.region)}</td><td class="n">${r.n}</td><td class="n">${num(r.avg)}</td><td class="n">${num(r.best)}</td></tr>`).join('') : '<tr><td colspan="4" class="muted">아직 기록이 없어요</td></tr>');
+
+    scores = sc.rows; drawScores();
+    fbRows = fb.rows; drawFb();
+  }
+
+  function drawScores() {
+    const q = $('q').value.trim();
+    const list = scores.map((r, i) => Object.assign({ rank: i + 1 }, r)).filter(r => !q || r.nick.includes(q) || r.region.includes(q));
+    $('scount').textContent = `${list.length} / ${scores.length}명`;
+    $('scores').innerHTML = '<tr><th class="n">순위</th><th>별명</th><th>시도</th><th class="n">점수</th><th class="n hide-sm">동물</th><th class="n hide-sm">퀴즈</th><th class="n hide-sm">사진</th><th class="n hide-sm">숨은 동물</th><th class="n hide-sm">플레이</th><th class="hide-sm">올린 날</th><th></th></tr>' +
+      (list.length ? list.map(r => `<tr><td class="n">${r.rank}</td><td>${esc(r.nick)}</td><td>${esc(r.region)}</td><td class="n"><b>${num(r.total)}</b></td><td class="n hide-sm">${r.animal}</td><td class="n hide-sm">${r.quiz}</td><td class="n hide-sm">${r.photo}</td><td class="n hide-sm">${(r.secret || 0) + (r.road || 0)}</td><td class="n hide-sm">${Math.floor((r.play || 0) / 60)}:${String((r.play || 0) % 60).padStart(2, '0')}</td><td class="hide-sm">${esc((r.updated || '').slice(0, 10))}</td>
+        <td><button class="danger" data-del="${esc(r.dev)}|${esc(r.nick)}">지우기</button></td></tr>`).join('') : '<tr><td colspan="11" class="muted">기록이 없어요</td></tr>');
+  }
+
+  function drawFb() {
+    const open = fbRows.filter(r => !r.done).length;
+    $('fbcount').textContent = `· 확인 안 한 것 ${open}개 / 모두 ${fbRows.length}개`;
+    const list = fbFilter === 'open' ? fbRows.filter(r => !r.done) : fbRows;
+    $('fblist').innerHTML = list.length ? list.map(r => `<div class="fb ${r.done ? 'done' : ''}">
+        <div><div class="meta"><span class="tag ${r.who === '선생님' ? 't' : ''}">${esc(r.who)}</span>${esc(new Date(r.created).toLocaleString('ko-KR'))}${r.place ? ' · ' + esc(r.place) : ''}</div><div class="text">${esc(r.text)}</div></div>
+        <div class="row"><button data-done="${r.id}" data-v="${r.done ? 0 : 1}">${r.done ? '되돌리기' : '확인함'}</button><button class="danger" data-fdel="${r.id}">지우기</button></div></div>`).join('')
+      : '<p class="muted">새 건의가 없어요.</p>';
+  }
+
+  $('lf').addEventListener('submit', e => { e.preventDefault(); login($('pw').value); });
+  $('reload').onclick = () => load().catch(e => alert(e.message));
+  $('logout').onclick = () => { store.set(''); location.reload(); };
+  $('q').oninput = drawScores;
+  document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { fbFilter = b.dataset.f; document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b)); drawFb(); });
+  document.addEventListener('click', async e => {
+    const t = e.target;
+    try {
+      if (t.dataset.del) {
+        const [dev, nick] = t.dataset.del.split('|');
+        if (!confirm(`「${nick}」 기록을 지울까요? 되살릴 수 없어요.`)) return;
+        await api('/admin/score/delete', { dev, nick }); scores = scores.filter(r => !(r.dev === dev && r.nick === nick)); drawScores();
+      } else if (t.dataset.done) {
+        await api('/admin/feedback/done', { id: +t.dataset.done, done: t.dataset.v === '1' });
+        const r = fbRows.find(x => x.id === +t.dataset.done); if (r) r.done = t.dataset.v === '1' ? 1 : 0; drawFb();
+      } else if (t.dataset.fdel) {
+        if (!confirm('이 건의를 지울까요?')) return;
+        await api('/admin/feedback/delete', { id: +t.dataset.fdel }); fbRows = fbRows.filter(r => r.id !== +t.dataset.fdel); drawFb();
+      }
+    } catch (err) { alert(err.message); }
+  });
+  const saved = store.get();
+  if (saved) login(saved); else $('pw').focus();
+})();
+</script>
+</body>
+</html>
